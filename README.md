@@ -80,8 +80,5 @@ curl -i -X DELETE http://localhost:8080/banco/1
 ```
 
 ## Observações
-
-- O cookie é `httponly`. Foi removido o `secure=True` original porque o servidor
-  roda em HTTP puro; com `secure`, o cURL e o navegador não devolveriam o cookie.
-- Senhas estão em texto puro no JSON, por simplicidade didática; em produção
-  seriam armazenadas com hash.
+O cookie é `httponly`. Foi removido o `secure=True` original porque o servidor
+roda em HTTP puro; com `secure`, o cURL e o navegador não devolveriam o cookie.
