@@ -1,6 +1,6 @@
 # BMVC – Nível 3: Portal + Banco de Livros
 
-Sistema construído sobre o framework **BMVC** (Bottle + MVC). Oferece dois recursos:
+Sistema feito sobre o framework **BMVC** (Bottle + MVC). Oferece dois recursos:
 
 | Recurso  | Rota      | Função |
 |----------|-----------|--------|
