@@ -67,11 +67,7 @@ class Application():
         session_id = self.get_session_id()
         if session_id:
             self.models.logout(session_id)
-
-
-    # ------------------------------------------------------------------
-    # Recurso "banco" (livros): só para usuários autenticados
-
+            
     def banco(self):
         if not self.is_logged_in():
             return redirect('/portal')
