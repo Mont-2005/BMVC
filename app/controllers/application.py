@@ -33,8 +33,9 @@ class Application():
 
 
     def locadora(self):
-        # Página estática pública (HTML + CSS + JS), sem necessidade de login
-        return template('app/views/html/locadora')
+        # Página pública da locadora: lista vinda do model (FilmeLocadora)
+        return template('app/views/html/locadora',
+                        filmes=self.models.get_locadora())
 
 
     def helper(self):
@@ -97,3 +98,22 @@ class Application():
 
     def delete_filme(self, filme_id):
         return self.models.delete_filme(filme_id)
+
+
+
+    # ------------------------------------------------------------------
+    # Recurso "locadora" (CRUD completo no navegador)
+
+    def create_filme_locadora(self, titulo, diretor, ano, genero, sinopse):
+        return self.models.create_filme_locadora(titulo, diretor, ano,
+                                                 genero, sinopse)
+
+
+    def update_filme_locadora(self, filme_id, titulo, diretor, ano, genero,
+                              sinopse, alugado=None):
+        return self.models.update_filme_locadora(filme_id, titulo, diretor,
+                                                 ano, genero, sinopse, alugado)
+
+
+    def delete_filme_locadora(self, filme_id):
+        return self.models.delete_filme_locadora(filme_id)
