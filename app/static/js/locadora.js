@@ -1,94 +1,170 @@
 document.addEventListener('DOMContentLoaded', function () {
-    var lista = document.getElementById('lista');
-    var cards = Array.prototype.slice.call(lista.querySelectorAll('.filme'));
-    var busca = document.getElementById('busca');
-    var genero = document.getElementById('filtro-genero');
-    var seculo = document.getElementById('filtro-seculo');
-    var ordem = document.getElementById('ordem');
-    var soAlugados = document.getElementById('so-alugados');
-    var contador = document.getElementById('contador');
-    var vazio = document.getElementById('vazio');
-    var btnTema = document.getElementById('btn-tema');
+    function byId(i) { return document.getElementById(i); }
 
-    function ler(chave, padrao) {
-        try {
-            var v = localStorage.getItem(chave);
-            return v === null ? padrao : JSON.parse(v);
-        } catch (e) { return padrao; }
+    var lista = byId('lista');
+    var form = byId('form-filme');
+    var msg = byId('mensagem');
+    var campos = {
+        id: byId('filme-id'), titulo: byId('f-titulo'), diretor: byId('f-diretor'),
+        ano: byId('f-ano'), genero: byId('f-genero'), sinopse: byId('f-sinopse')
+    };
+    var btnSalvar = byId('btn-salvar'), btnCancelar = byId('btn-cancelar'), tituloForm = byId('titulo-form');
+    var busca = byId('busca'), genero = byId('filtro-genero'), seculo = byId('filtro-seculo');
+    var ordem = byId('ordem'), soAlugados = byId('so-alugados');
+    var contador = byId('contador'), vazio = byId('vazio'), btnTema = byId('btn-tema');
+
+    function aviso(texto, tipo) { msg.textContent = texto; msg.className = tipo || ''; }
+
+    function api(metodo, url, dados) {
+        return fetch(url, {
+            method: metodo,
+            headers: { 'Content-Type': 'application/json' },
+            body: dados ? JSON.stringify(dados) : undefined
+        }).then(function (r) {
+            return r.json().then(function (j) {
+                if (!r.ok) { throw new Error(j.erro || 'Erro inesperado'); }
+                return j;
+            });
+        });
     }
 
-    function gravar(chave, valor) {
-        try { localStorage.setItem(chave, JSON.stringify(valor)); } catch (e) {}
+    function cards() { return Array.prototype.slice.call(lista.querySelectorAll('.filme')); }
+    function semAcento(t) { return t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+
+    function dadosDoCard(card) {
+        return {
+            titulo: card.dataset.titulo, diretor: card.dataset.diretor,
+            ano: card.dataset.ano, genero: card.dataset.genero,
+            sinopse: card.dataset.sinopse, alugado: card.dataset.alugado === 'true'
+        };
     }
 
-    var alugados = ler('locadora_alugados', []);
-
-    function semAcento(texto) {
-        return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    // Preenche (ou recria) o card a partir dos dados do servidor
+    function montarCard(f, card) {
+        card = card || document.createElement('article');
+        card.className = 'filme' + (f.alugado ? ' alugado' : '');
+        card.dataset.id = f.id; card.dataset.titulo = f.titulo; card.dataset.diretor = f.diretor;
+        card.dataset.ano = f.ano; card.dataset.genero = f.genero; card.dataset.sinopse = f.sinopse || '';
+        card.dataset.alugado = f.alugado ? 'true' : 'false';
+        card.innerHTML = '<span class="etiqueta"></span><h2></h2><p class="diretor"></p><p class="sinopse"></p>' +
+            '<p class="status"></p><div class="botoes">' +
+            '<button class="btn-alugar" type="button"></button>' +
+            '<button class="btn-editar" type="button">Editar</button>' +
+            '<button class="btn-excluir" type="button">Excluir</button></div>';
+        card.querySelector('.etiqueta').textContent = f.genero;
+        card.querySelector('h2').textContent = f.titulo;
+        card.querySelector('.diretor').textContent = 'Direção: ' + f.diretor + ' \u2022 ' + f.ano;
+        card.querySelector('.sinopse').textContent = f.sinopse || '';
+        card.querySelector('.status').textContent = f.alugado ? 'Alugado' : 'Disponível';
+        card.querySelector('.btn-alugar').textContent = f.alugado ? 'Devolver' : 'Alugar';
+        return card;
     }
 
     function atualizar() {
         var termo = semAcento(busca.value.trim());
-        var visiveis = 0;
+        var todos = cards();
+        var visiveis = 0, alugados = 0;
 
-        cards.sort(function (a, b) {
-            if (ordem.value === 'ano') {
-                return Number(a.dataset.ano) - Number(b.dataset.ano);
-            }
+        todos.sort(function (a, b) {
+            if (ordem.value === 'ano') { return Number(a.dataset.ano) - Number(b.dataset.ano); }
             return a.dataset.titulo.localeCompare(b.dataset.titulo, 'pt-BR');
         });
 
-        cards.forEach(function (card) {
+        todos.forEach(function (card) {
+            var ehAlugado = card.dataset.alugado === 'true';
+            var sec = Number(card.dataset.ano) >= 2001 ? 'XXI' : 'XX';
             var texto = semAcento(card.dataset.titulo + ' ' + card.dataset.diretor);
-            var generoCard = card.querySelector('.etiqueta').textContent;
             var ok = texto.indexOf(termo) !== -1 &&
-                (genero.value === 'todos' || generoCard === genero.value) &&
-                (seculo.value === 'todos' || card.dataset.seculo === seculo.value) &&
-                (!soAlugados.checked || alugados.indexOf(card.dataset.titulo) !== -1);
+                (genero.value === 'todos' || card.dataset.genero === genero.value) &&
+                (seculo.value === 'todos' || sec === seculo.value) &&
+                (!soAlugados.checked || ehAlugado);
+            if (ehAlugado) { alugados++; }
             card.hidden = !ok;
             lista.appendChild(card);
             if (ok) { visiveis++; }
         });
 
-        contador.textContent = visiveis + ' de ' + cards.length + ' filmes exibidos \u2022 ' +
-            alugados.length + ' alugado(s) \u2022 ' + (cards.length - alugados.length) + ' disponível(is)';
+        contador.textContent = visiveis + ' de ' + todos.length + ' filmes exibidos \u2022 ' +
+            alugados + ' alugado(s) \u2022 ' + (todos.length - alugados) + ' disponível(is)';
         vazio.hidden = visiveis !== 0;
     }
 
-    function marcarAluguel(card) {
-        var ativo = alugados.indexOf(card.dataset.titulo) !== -1;
-        card.classList.toggle('alugado', ativo);
-        card.querySelector('.status').textContent = ativo ? 'Alugado' : 'Disponível';
-        card.querySelector('.btn-alugar').textContent = ativo ? 'Devolver' : 'Alugar';
+    function limparForm() {
+        form.reset(); campos.id.value = '';
+        tituloForm.textContent = 'Cadastrar filme';
+        btnSalvar.textContent = 'Adicionar filme';
+        btnCancelar.hidden = true;
     }
 
-    cards.forEach(function (card) {
-        marcarAluguel(card);
-        card.querySelector('.btn-alugar').addEventListener('click', function () {
-            var titulo = card.dataset.titulo;
-            var i = alugados.indexOf(titulo);
-            if (i === -1) { alugados.push(titulo); } else { alugados.splice(i, 1); }
-            gravar('locadora_alugados', alugados);
-            marcarAluguel(card);
-            atualizar();
-        });
+    // CREATE e UPDATE
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var dados = {
+            titulo: campos.titulo.value, diretor: campos.diretor.value, ano: campos.ano.value,
+            genero: campos.genero.value, sinopse: campos.sinopse.value
+        };
+        var id = campos.id.value;
+        var atual = id ? lista.querySelector('.filme[data-id="' + id + '"]') : null;
+        if (atual) { dados.alugado = atual.dataset.alugado === 'true'; }
+        var req = id ? api('PUT', '/locadora/' + id, dados) : api('POST', '/locadora', dados);
+        req.then(function (f) {
+            if (atual) { montarCard(f, atual); } else { lista.appendChild(montarCard(f)); }
+            aviso(id ? 'Filme atualizado!' : 'Filme adicionado ao acervo!', 'ok');
+            limparForm(); atualizar();
+        }).catch(function (err) { aviso(err.message, 'erro'); });
     });
 
+    btnCancelar.addEventListener('click', function () { limparForm(); aviso(''); });
+
+    // Alugar/Devolver, Editar e Excluir (delegação de eventos)
+    lista.addEventListener('click', function (e) {
+        var card = e.target.closest('.filme'); if (!card) { return; }
+        var id = card.dataset.id;
+
+        if (e.target.classList.contains('btn-alugar')) {
+            var d = dadosDoCard(card);
+            d.alugado = !d.alugado;
+            api('PUT', '/locadora/' + id, d).then(function (f) {
+                montarCard(f, card); atualizar();
+            }).catch(function (err) { aviso(err.message, 'erro'); });
+        }
+
+        if (e.target.classList.contains('btn-editar')) {
+            var c = dadosDoCard(card);
+            campos.id.value = id; campos.titulo.value = c.titulo; campos.diretor.value = c.diretor;
+            campos.ano.value = c.ano; campos.genero.value = c.genero; campos.sinopse.value = c.sinopse;
+            tituloForm.textContent = 'Editando: ' + c.titulo;
+            btnSalvar.textContent = 'Salvar alterações';
+            btnCancelar.hidden = false;
+            form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            campos.titulo.focus();
+        }
+
+        if (e.target.classList.contains('btn-excluir')) {
+            if (!confirm('Excluir "' + card.dataset.titulo + '" do acervo?')) { return; }
+            api('DELETE', '/locadora/' + id).then(function () {
+                card.remove(); aviso('Filme removido.', 'ok'); atualizar();
+            }).catch(function (err) { aviso(err.message, 'erro'); });
+        }
+    });
+
+    // Tema claro/escuro (apenas preferência visual no localStorage)
     function aplicarTema(escuro) {
         document.body.classList.toggle('escuro', escuro);
         btnTema.textContent = escuro ? 'Modo claro' : 'Modo escuro';
-        gravar('locadora_tema_escuro', escuro);
+        try { localStorage.setItem('locadora_tema_escuro', JSON.stringify(escuro)); } catch (e) {}
     }
-
     btnTema.addEventListener('click', function () {
         aplicarTema(!document.body.classList.contains('escuro'));
     });
+    var salvo = true;
+    try { var v = localStorage.getItem('locadora_tema_escuro'); if (v !== null) { salvo = JSON.parse(v); } } catch (e) {}
 
     [busca, genero, seculo, ordem, soAlugados].forEach(function (el) {
         el.addEventListener('input', atualizar);
         el.addEventListener('change', atualizar);
     });
 
-    aplicarTema(ler('locadora_tema_escuro', true));
+    aplicarTema(salvo);
     atualizar();
 });
