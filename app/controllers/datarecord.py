@@ -1,5 +1,6 @@
 from app.models.user_account import UserAccount
 from app.models.filme import Filme
+from app.models.filme_locadora import FilmeLocadora
 import json
 import uuid
 
@@ -9,6 +10,7 @@ class DataRecord():
 
     USERS_FILE = "app/controllers/db/user_accounts.json"
     FILMES_FILE = "app/controllers/db/filmes.json"
+    LOCADORA_FILE = "app/controllers/db/locadora.json"
 
 
     def __init__(self):
@@ -17,6 +19,8 @@ class DataRecord():
         self.__authenticated_users = {}
         self.read()
         self.read_filmes()
+        self.locadora = []     # banco (json)
+        self.read_locadora()
 
 
     # ------------------------------------------------------------------
@@ -145,4 +149,83 @@ class DataRecord():
             return False
         self.filmes.remove(filme)
         self.__save_filmes()
+        return True
+
+
+
+    # ------------------------------------------------------------------
+    # Locadora (CRUD completo pelo navegador)
+
+    def read_locadora(self):
+        try:
+            with open(self.LOCADORA_FILE, "r") as arquivo_json:
+                self.locadora = [FilmeLocadora(**d) for d in json.load(arquivo_json)]
+        except FileNotFoundError:
+            self.locadora = []
+
+
+    def __save_locadora(self):
+        with open(self.LOCADORA_FILE, "w") as arquivo_json:
+            json.dump([vars(f) for f in self.locadora], arquivo_json,
+                      ensure_ascii=False, indent=2)
+
+
+    @staticmethod
+    def __validar_locadora(titulo, diretor, ano, genero, sinopse):
+        titulo = (titulo or "").strip()
+        diretor = (diretor or "").strip()
+        genero = (genero or "").strip()
+        sinopse = (sinopse or "").strip()
+        if not titulo or not diretor or not genero:
+            raise ValueError("Preencha título, diretor e gênero.")
+        try:
+            ano = int(ano)
+        except (TypeError, ValueError):
+            raise ValueError("O ano deve ser um número inteiro.")
+        if ano < 1888 or ano > 2100:
+            raise ValueError("Informe um ano entre 1888 e 2100.")
+        return titulo, diretor, ano, genero, sinopse
+
+
+    def get_locadora(self):
+        return self.locadora
+
+
+    def get_filme_locadora(self, filme_id):
+        for f in self.locadora:
+            if f.id == filme_id:
+                return f
+        return None
+
+
+    def create_filme_locadora(self, titulo, diretor, ano, genero, sinopse):
+        titulo, diretor, ano, genero, sinopse = self.__validar_locadora(
+            titulo, diretor, ano, genero, sinopse)
+        novo_id = max([f.id for f in self.locadora], default=0) + 1
+        filme = FilmeLocadora(novo_id, titulo, diretor, ano, genero, sinopse)
+        self.locadora.append(filme)
+        self.__save_locadora()
+        return filme
+
+
+    def update_filme_locadora(self, filme_id, titulo, diretor, ano, genero,
+                              sinopse, alugado=None):
+        filme = self.get_filme_locadora(filme_id)
+        if filme is None:
+            return None
+        (filme.titulo, filme.diretor, filme.ano, filme.genero,
+         filme.sinopse) = self.__validar_locadora(titulo, diretor, ano,
+                                                  genero, sinopse)
+        if alugado is not None:
+            filme.alugado = bool(alugado)
+        self.__save_locadora()
+        return filme
+
+
+    def delete_filme_locadora(self, filme_id):
+        filme = self.get_filme_locadora(filme_id)
+        if filme is None:
+            return False
+        self.locadora.remove(filme)
+        self.__save_locadora()
         return True
