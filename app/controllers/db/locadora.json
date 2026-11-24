@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "titulo": "Ainda Estou Aqui",
+    "diretor": "Walter Salles",
+    "ano": 2024,
+    "genero": "Drama",
+    "sinopse": "Eunice Paiva busca a verdade sobre o desaparecimento do marido na ditadura.",
+    "alugado": false
+  },
+  {
+    "id": 2,
+    "titulo": "Bacurau",
+    "diretor": "Kleber Mendonça Filho",
+    "ano": 2019,
+    "genero": "Suspense",
+    "sinopse": "Uma pequena cidade do sertão enfrenta uma ameaça misteriosa.",
+    "alugado": false
+  },
+  {
+    "id": 3,
+    "titulo": "Central do Brasil",
+    "diretor": "Walter Salles",
+    "ano": 1998,
+    "genero": "Drama",
+    "sinopse": "Uma ex-professora e um menino atravessam o país em busca do pai dele.",
+    "alugado": false
+  },
+  {
+    "id": 4,
+    "titulo": "Cidade de Deus",
+    "diretor": "Fernando Meirelles",
+    "ano": 2002,
+    "genero": "Drama",
+    "sinopse": "A formação do crime organizado numa favela do Rio, vista por Buscapé.",
+    "alugado": false
+  },
+  {
+    "id": 5,
+    "titulo": "Dona Flor e Seus Dois Maridos",
+    "diretor": "Bruno Barreto",
+    "ano": 1976,
+    "genero": "Comédia",
+    "sinopse": "Dona Flor é assombrada pelo fantasma do primeiro marido.",
+    "alugado": false
+  },
+  {
+    "id": 6,
+    "titulo": "O Auto da Compadecida",
+    "diretor": "Guel Arraes",
+    "ano": 2000,
+    "genero": "Comédia",
+    "sinopse": "As trapaças de João Grilo e Chicó no sertão nordestino.",
+    "alugado": false
+  },
+  {
+    "id": 7,
+    "titulo": "O Pagador de Promessas",
+    "diretor": "Anselmo Duarte",
+    "ano": 1962,
+    "genero": "Drama",
+    "sinopse": "Zé do Burro tenta cumprir uma promessa e esbarra na intolerância.",
+    "alugado": false
+  },
+  {
+    "id": 8,
+    "titulo": "Tropa de Elite",
+    "diretor": "José Padilha",
+    "ano": 2007,
+    "genero": "Ação",
+    "sinopse": "O capitão Nascimento e a rotina violenta do BOPE.",
+    "alugado": false
+  }
+]
