@@ -12,12 +12,36 @@
     <header class="topo">
         <div>
             <h1>Locadora Cine Nacional</h1>
-            <p class="subtitulo">Catálogo de clássicos do cinema brasileiro &mdash; servido pelo BMVC (Bottle + MVC)</p>
+            <p class="subtitulo">Catálogo do cinema brasileiro &mdash; gerencie o acervo e os aluguéis</p>
         </div>
         <button id="btn-tema" type="button" aria-label="Alternar tema claro/escuro">Modo claro</button>
     </header>
 
     <main>
+        <section class="bmvc" aria-label="Cadastro">
+            <h2 id="titulo-form">Cadastrar filme</h2>
+            <form id="form-filme" class="form-filme">
+                <input type="hidden" id="filme-id">
+                <label>Título <input id="f-titulo" type="text" required></label>
+                <label>Diretor <input id="f-diretor" type="text" required></label>
+                <label>Ano <input id="f-ano" type="number" min="1888" max="2100" required></label>
+                <label>Gênero
+                    <select id="f-genero" required>
+                        <option value="Ação">Ação</option>
+                        <option value="Comédia">Comédia</option>
+                        <option value="Drama" selected>Drama</option>
+                        <option value="Suspense">Suspense</option>
+                    </select>
+                </label>
+                <label class="larga">Sinopse <input id="f-sinopse" type="text" placeholder="Resumo curto (opcional)"></label>
+                <div class="acoes">
+                    <button type="submit" id="btn-salvar" class="btn-alugar">Adicionar filme</button>
+                    <button type="button" id="btn-cancelar" hidden>Cancelar edição</button>
+                </div>
+            </form>
+            <p id="mensagem" role="status" aria-live="polite"></p>
+        </section>
+
         <section class="painel" aria-label="Filtros">
             <input id="busca" type="search" placeholder="Buscar por título ou diretor...">
             <select id="filtro-genero">
@@ -44,70 +68,20 @@
         <p id="contador" class="contador" aria-live="polite"></p>
 
         <section id="lista" class="grade">
-            <article class="filme" data-titulo="Ainda Estou Aqui" data-diretor="Walter Salles" data-ano="2024" data-seculo="XXI">
-                <span class="etiqueta">Drama</span>
-                <h2>Ainda Estou Aqui</h2>
-                <p class="diretor">Direção: Walter Salles &bull; 2024</p>
-                <p>Eunice Paiva busca a verdade sobre o desaparecimento do marido na ditadura.</p>
-                <p class="status">Disponível</p>
-                <button class="btn-alugar" type="button">Alugar</button>
+            % for f in filmes:
+            <article class="filme {{ 'alugado' if f.alugado else '' }}" data-id="{{ f.id }}" data-titulo="{{ f.titulo }}" data-diretor="{{ f.diretor }}" data-ano="{{ f.ano }}" data-genero="{{ f.genero }}" data-sinopse="{{ f.sinopse }}" data-alugado="{{ 'true' if f.alugado else 'false' }}">
+                <span class="etiqueta">{{ f.genero }}</span>
+                <h2>{{ f.titulo }}</h2>
+                <p class="diretor">Direção: {{ f.diretor }} &bull; {{ f.ano }}</p>
+                <p class="sinopse">{{ f.sinopse }}</p>
+                <p class="status">{{ 'Alugado' if f.alugado else 'Disponível' }}</p>
+                <div class="botoes">
+                    <button class="btn-alugar" type="button">{{ 'Devolver' if f.alugado else 'Alugar' }}</button>
+                    <button class="btn-editar" type="button">Editar</button>
+                    <button class="btn-excluir" type="button">Excluir</button>
+                </div>
             </article>
-            <article class="filme" data-titulo="Bacurau" data-diretor="Kleber Mendonça Filho" data-ano="2019" data-seculo="XXI">
-                <span class="etiqueta">Suspense</span>
-                <h2>Bacurau</h2>
-                <p class="diretor">Direção: Kleber Mendonça Filho &bull; 2019</p>
-                <p>Uma pequena cidade do sertão enfrenta uma ameaça misteriosa.</p>
-                <p class="status">Disponível</p>
-                <button class="btn-alugar" type="button">Alugar</button>
-            </article>
-            <article class="filme" data-titulo="Central do Brasil" data-diretor="Walter Salles" data-ano="1998" data-seculo="XX">
-                <span class="etiqueta">Drama</span>
-                <h2>Central do Brasil</h2>
-                <p class="diretor">Direção: Walter Salles &bull; 1998</p>
-                <p>Uma ex-professora e um menino atravessam o país em busca do pai dele.</p>
-                <p class="status">Disponível</p>
-                <button class="btn-alugar" type="button">Alugar</button>
-            </article>
-            <article class="filme" data-titulo="Cidade de Deus" data-diretor="Fernando Meirelles" data-ano="2002" data-seculo="XXI">
-                <span class="etiqueta">Drama</span>
-                <h2>Cidade de Deus</h2>
-                <p class="diretor">Direção: Fernando Meirelles &bull; 2002</p>
-                <p>A formação do crime organizado numa favela do Rio, vista por Buscapé.</p>
-                <p class="status">Disponível</p>
-                <button class="btn-alugar" type="button">Alugar</button>
-            </article>
-            <article class="filme" data-titulo="Dona Flor e Seus Dois Maridos" data-diretor="Bruno Barreto" data-ano="1976" data-seculo="XX">
-                <span class="etiqueta">Comédia</span>
-                <h2>Dona Flor e Seus Dois Maridos</h2>
-                <p class="diretor">Direção: Bruno Barreto &bull; 1976</p>
-                <p>Dona Flor é assombrada pelo fantasma do primeiro marido.</p>
-                <p class="status">Disponível</p>
-                <button class="btn-alugar" type="button">Alugar</button>
-            </article>
-            <article class="filme" data-titulo="O Auto da Compadecida" data-diretor="Guel Arraes" data-ano="2000" data-seculo="XX">
-                <span class="etiqueta">Comédia</span>
-                <h2>O Auto da Compadecida</h2>
-                <p class="diretor">Direção: Guel Arraes &bull; 2000</p>
-                <p>As trapaças de João Grilo e Chicó no sertão nordestino.</p>
-                <p class="status">Disponível</p>
-                <button class="btn-alugar" type="button">Alugar</button>
-            </article>
-            <article class="filme" data-titulo="O Pagador de Promessas" data-diretor="Anselmo Duarte" data-ano="1962" data-seculo="XX">
-                <span class="etiqueta">Drama</span>
-                <h2>O Pagador de Promessas</h2>
-                <p class="diretor">Direção: Anselmo Duarte &bull; 1962</p>
-                <p>Zé do Burro tenta cumprir uma promessa e esbarra na intolerância.</p>
-                <p class="status">Disponível</p>
-                <button class="btn-alugar" type="button">Alugar</button>
-            </article>
-            <article class="filme" data-titulo="Tropa de Elite" data-diretor="José Padilha" data-ano="2007" data-seculo="XXI">
-                <span class="etiqueta">Ação</span>
-                <h2>Tropa de Elite</h2>
-                <p class="diretor">Direção: José Padilha &bull; 2007</p>
-                <p>O capitão Nascimento e a rotina violenta do BOPE.</p>
-                <p class="status">Disponível</p>
-                <button class="btn-alugar" type="button">Alugar</button>
-            </article>
+            % end
         </section>
 
         <p id="vazio" class="vazio" hidden>Nenhum filme encontrado com esses filtros.</p>
@@ -115,7 +89,7 @@
     </main>
 
     <footer class="rodape">
-        <p>Projeto BMVC &ndash; Nível 3 &bull; <a href="/portal">Portal</a> &bull; <a href="/helper">Ajuda</a></p>
+        <p>Projeto BMVC &ndash; Nível II &bull; <a href="/helper">Ajuda</a></p>
     </footer>
 
 </body>
