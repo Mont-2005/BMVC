@@ -122,6 +122,49 @@ def action_banco_delete(filme_id):      # DELETE
     return {'mensagem': f'Filme {filme_id} removido.'}
 
 #-----------------------------------------------------------------------------
+# Recurso "locadora": CRUD completo pelo navegador (HTML/TPL + CSS + JS).
+# READ = GET /locadora (TPL renderizado) | CREATE/UPDATE/DELETE = API JSON
+# chamada via fetch() pelo arquivo static/js/locadora.js.
+
+def _dados_locadora():
+    d = request.json or {}
+    return (d.get('titulo'), d.get('diretor'), d.get('ano'),
+            d.get('genero'), d.get('sinopse'))
+
+
+@app.route('/locadora', method='POST')
+def action_locadora_create():
+    try:
+        filme = ctl.create_filme_locadora(*_dados_locadora())
+    except ValueError as erro:
+        response.status = 400
+        return {'erro': str(erro)}
+    response.status = 201
+    return vars(filme)
+
+
+@app.route('/locadora/<filme_id:int>', method='PUT')
+def action_locadora_update(filme_id):
+    alugado = (request.json or {}).get('alugado')
+    try:
+        filme = ctl.update_filme_locadora(filme_id, *_dados_locadora(), alugado)
+    except ValueError as erro:
+        response.status = 400
+        return {'erro': str(erro)}
+    if filme is None:
+        response.status = 404
+        return {'erro': f'Filme {filme_id} não encontrado.'}
+    return vars(filme)
+
+
+@app.route('/locadora/<filme_id:int>', method='DELETE')
+def action_locadora_delete(filme_id):
+    if not ctl.delete_filme_locadora(filme_id):
+        response.status = 404
+        return {'erro': f'Filme {filme_id} não encontrado.'}
+    return {'mensagem': f'Filme {filme_id} removido.'}
+
+#-----------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
