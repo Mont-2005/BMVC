@@ -122,9 +122,43 @@ def action_banco_delete(filme_id):      # DELETE
     return {'mensagem': f'Filme {filme_id} removido.'}
 
 #-----------------------------------------------------------------------------
-# Recurso "locadora": CRUD completo pelo navegador (HTML/TPL + CSS + JS).
-# READ = GET /locadora (TPL renderizado) | CREATE/UPDATE/DELETE = API JSON
-# chamada via fetch() pelo arquivo static/js/locadora.js.
+# Locadora (BMVC III): catálogo público + área restrita com login.
+#   GET  /locadora   catálogo público (somente leitura)
+#   GET  /entrar     página de login        POST /entrar  autentica
+#   POST /sair       encerra a sessão
+#   GET  /gestao     página RESTRITA (redireciona para /entrar sem login)
+#   API (JSON, exige login e respeita o papel do usuário):
+#     POST /api/filmes        cria            -> só gerente
+#     PUT  /api/filmes/<id>   atualiza        -> gerente (tudo) | atendente (só aluguel)
+#     DELETE /api/filmes/<id> exclui          -> só gerente
+
+@app.route('/entrar', method='GET')
+def action_entrar_form():
+    return ctl.render('entrar')
+
+
+@app.route('/entrar', method='POST')
+def action_entrar():
+    session_id = ctl.login_funcionario(request.forms.get('username'),
+                                       request.forms.get('password'))
+    if not session_id:
+        return redirect('/entrar?erro=1')
+    response.set_cookie(ctl.COOKIE_SESSAO, session_id, httponly=True,
+                        max_age=3600, path='/')
+    return redirect('/gestao')
+
+
+@app.route('/sair', method='POST')
+def action_sair():
+    ctl.logout_funcionario()
+    response.delete_cookie(ctl.COOKIE_SESSAO, path='/')
+    return redirect('/locadora')
+
+
+@app.route('/gestao', method='GET')
+def action_gestao():
+    return ctl.render('gestao')
+
 
 def _dados_locadora():
     d = request.json or {}
@@ -132,33 +166,60 @@ def _dados_locadora():
             d.get('genero'), d.get('sinopse'))
 
 
-@app.route('/locadora', method='POST')
-def action_locadora_create():
+def _checar_acesso(somente_gerente):
+    """Retorna (usuario, None) se liberado ou (None, erro) com o status HTTP."""
+    usuario = ctl.usuario_atual()
+    if not usuario:
+        response.status = 401
+        return None, {'erro': 'Faça login para continuar.'}
+    if somente_gerente and usuario.papel != 'gerente':
+        response.status = 403
+        return None, {'erro': 'Apenas o gerente pode fazer isso.'}
+    return usuario, None
+
+
+@app.route('/api/filmes', method='POST')
+def action_filmes_create():
+    usuario, erro = _checar_acesso(somente_gerente=True)
+    if erro:
+        return erro
     try:
         filme = ctl.create_filme_locadora(*_dados_locadora())
-    except ValueError as erro:
+    except ValueError as e:
         response.status = 400
-        return {'erro': str(erro)}
+        return {'erro': str(e)}
     response.status = 201
     return vars(filme)
 
 
-@app.route('/locadora/<filme_id:int>', method='PUT')
-def action_locadora_update(filme_id):
+@app.route('/api/filmes/<filme_id:int>', method='PUT')
+def action_filmes_update(filme_id):
+    usuario, erro = _checar_acesso(somente_gerente=False)
+    if erro:
+        return erro
     alugado = (request.json or {}).get('alugado')
     try:
-        filme = ctl.update_filme_locadora(filme_id, *_dados_locadora(), alugado)
-    except ValueError as erro:
+        if usuario.papel == 'gerente':
+            filme = ctl.update_filme_locadora(filme_id, *_dados_locadora(), alugado)
+        elif alugado is None:
+            response.status = 400
+            return {'erro': "Informe o campo 'alugado'."}
+        else:
+            filme = ctl.alugar_filme_locadora(filme_id, alugado)
+    except ValueError as e:
         response.status = 400
-        return {'erro': str(erro)}
+        return {'erro': str(e)}
     if filme is None:
         response.status = 404
         return {'erro': f'Filme {filme_id} não encontrado.'}
     return vars(filme)
 
 
-@app.route('/locadora/<filme_id:int>', method='DELETE')
-def action_locadora_delete(filme_id):
+@app.route('/api/filmes/<filme_id:int>', method='DELETE')
+def action_filmes_delete(filme_id):
+    usuario, erro = _checar_acesso(somente_gerente=True)
+    if erro:
+        return erro
     if not ctl.delete_filme_locadora(filme_id):
         response.status = 404
         return {'erro': f'Filme {filme_id} não encontrado.'}
