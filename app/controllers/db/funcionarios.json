@@ -1,0 +1,16 @@
+[
+  {
+    "username": "gerente",
+    "nome": "Marina Gerente",
+    "papel": "gerente",
+    "salt": "cb775495e39f7b8cbdce2dad0f1c6b09",
+    "senha_hash": "65aa0531f4fd182d8ee6c1fe151e63d1e428f2086b6b10c74a89a28d4079da9b"
+  },
+  {
+    "username": "atendente",
+    "nome": "Carlos Atendente",
+    "papel": "atendente",
+    "salt": "25181b95333e2682e7d0021b2753403a",
+    "senha_hash": "18baa6b67460333dcd842fdf8583853b6e29b223ab7d9a1ca5e232dd75c3a9f7"
+  }
+]
