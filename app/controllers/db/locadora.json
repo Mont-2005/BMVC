@@ -2,7 +2,7 @@
   {
     "id": 1,
     "titulo": "Ainda Estou Aqui",
-    "diretor": "Walter Salles",
+    "diretor": "Walter Salle",
     "ano": 2024,
     "genero": "Drama",
     "sinopse": "Eunice Paiva busca a verdade sobre o desaparecimento do marido na ditadura.",
@@ -10,7 +10,7 @@
   },
   {
     "id": 2,
-    "titulo": "Bacurau",
+    "titulo": "Bacura",
     "diretor": "Kleber Mendonça Filho",
     "ano": 2019,
     "genero": "Suspense",
@@ -69,6 +69,15 @@
     "ano": 2007,
     "genero": "Ação",
     "sinopse": "O capitão Nascimento e a rotina violenta do BOPE.",
+    "alugado": false
+  },
+  {
+    "id": 9,
+    "titulo": "O pequeno Príncipe",
+    "diretor": "Mark Osborne",
+    "ano": 2015,
+    "genero": "Ação",
+    "sinopse": "Uma menina muito ocupada conhece um excêntrico aviador que conta a ela as aventuras de um principezinho que mora em um asteroide",
     "alugado": false
   }
 ]
