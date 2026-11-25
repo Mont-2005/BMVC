@@ -1,26 +1,31 @@
 document.addEventListener('DOMContentLoaded', function () {
     function byId(i) { return document.getElementById(i); }
 
+    var modo = document.body.dataset.modo;                 // 'catalogo' ou 'gestao'
+    var gerente = document.body.dataset.gerente === 'true'; // papel vem do servidor (TPL)
     var lista = byId('lista');
-    var form = byId('form-filme');
     var msg = byId('mensagem');
-    var campos = {
-        id: byId('filme-id'), titulo: byId('f-titulo'), diretor: byId('f-diretor'),
-        ano: byId('f-ano'), genero: byId('f-genero'), sinopse: byId('f-sinopse')
-    };
-    var btnSalvar = byId('btn-salvar'), btnCancelar = byId('btn-cancelar'), tituloForm = byId('titulo-form');
+    var form = byId('form-filme');                          // só existe para o gerente
     var busca = byId('busca'), genero = byId('filtro-genero'), seculo = byId('filtro-seculo');
     var ordem = byId('ordem'), soAlugados = byId('so-alugados');
     var contador = byId('contador'), vazio = byId('vazio'), btnTema = byId('btn-tema');
 
-    function aviso(texto, tipo) { msg.textContent = texto; msg.className = tipo || ''; }
+    function aviso(texto, tipo) {
+        if (!msg) { return; }
+        msg.textContent = texto; msg.className = tipo || '';
+    }
 
+    // Todas as chamadas ao servidor passam por aqui (cookie de sessão vai junto)
     function api(metodo, url, dados) {
         return fetch(url, {
             method: metodo,
             headers: { 'Content-Type': 'application/json' },
             body: dados ? JSON.stringify(dados) : undefined
         }).then(function (r) {
+            if (r.status === 401) {                     // sessão expirou: volta ao login
+                window.location.href = '/entrar?aviso=1';
+                throw new Error('Sessão expirada.');
+            }
             return r.json().then(function (j) {
                 if (!r.ok) { throw new Error(j.erro || 'Erro inesperado'); }
                 return j;
@@ -49,8 +54,9 @@ document.addEventListener('DOMContentLoaded', function () {
         card.innerHTML = '<span class="etiqueta"></span><h2></h2><p class="diretor"></p><p class="sinopse"></p>' +
             '<p class="status"></p><div class="botoes">' +
             '<button class="btn-alugar" type="button"></button>' +
-            '<button class="btn-editar" type="button">Editar</button>' +
-            '<button class="btn-excluir" type="button">Excluir</button></div>';
+            (gerente ? '<button class="btn-editar" type="button">Editar</button>' +
+                       '<button class="btn-excluir" type="button">Excluir</button>' : '') +
+            '</div>';
         card.querySelector('.etiqueta').textContent = f.genero;
         card.querySelector('h2').textContent = f.titulo;
         card.querySelector('.diretor').textContent = 'Direção: ' + f.diretor + ' \u2022 ' + f.ano;
@@ -89,64 +95,78 @@ document.addEventListener('DOMContentLoaded', function () {
         vazio.hidden = visiveis !== 0;
     }
 
-    function limparForm() {
-        form.reset(); campos.id.value = '';
-        tituloForm.textContent = 'Cadastrar filme';
-        btnSalvar.textContent = 'Adicionar filme';
-        btnCancelar.hidden = true;
+    // ---------- CRUD (somente na área restrita) ----------
+    if (modo === 'gestao') {
+        if (form) {   // formulário existe só para o gerente
+            var campos = {
+                id: byId('filme-id'), titulo: byId('f-titulo'), diretor: byId('f-diretor'),
+                ano: byId('f-ano'), genero: byId('f-genero'), sinopse: byId('f-sinopse')
+            };
+            var btnSalvar = byId('btn-salvar'), btnCancelar = byId('btn-cancelar'), tituloForm = byId('titulo-form');
+
+            var limparForm = function () {
+                form.reset(); campos.id.value = '';
+                tituloForm.textContent = 'Cadastrar filme';
+                btnSalvar.textContent = 'Adicionar filme';
+                btnCancelar.hidden = true;
+            };
+
+            // CREATE e UPDATE
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var dados = {
+                    titulo: campos.titulo.value, diretor: campos.diretor.value, ano: campos.ano.value,
+                    genero: campos.genero.value, sinopse: campos.sinopse.value
+                };
+                var id = campos.id.value;
+                var atual = id ? lista.querySelector('.filme[data-id="' + id + '"]') : null;
+                if (atual) { dados.alugado = atual.dataset.alugado === 'true'; }
+                var req = id ? api('PUT', '/api/filmes/' + id, dados) : api('POST', '/api/filmes', dados);
+                req.then(function (f) {
+                    if (atual) { montarCard(f, atual); } else { lista.appendChild(montarCard(f)); }
+                    aviso(id ? 'Filme atualizado!' : 'Filme adicionado ao acervo!', 'ok');
+                    limparForm(); atualizar();
+                }).catch(function (err) { aviso(err.message, 'erro'); });
+            });
+
+            btnCancelar.addEventListener('click', function () { limparForm(); aviso(''); });
+
+            // Editar (preenche o formulário)
+            lista.addEventListener('click', function (e) {
+                if (!e.target.classList.contains('btn-editar')) { return; }
+                var card = e.target.closest('.filme');
+                var c = dadosDoCard(card);
+                campos.id.value = card.dataset.id; campos.titulo.value = c.titulo; campos.diretor.value = c.diretor;
+                campos.ano.value = c.ano; campos.genero.value = c.genero; campos.sinopse.value = c.sinopse;
+                tituloForm.textContent = 'Editando: ' + c.titulo;
+                btnSalvar.textContent = 'Salvar alterações';
+                btnCancelar.hidden = false;
+                form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                campos.titulo.focus();
+            });
+        }
+
+        // Alugar/Devolver (gerente e atendente) e Excluir (gerente)
+        lista.addEventListener('click', function (e) {
+            var card = e.target.closest('.filme'); if (!card) { return; }
+            var id = card.dataset.id;
+
+            if (e.target.classList.contains('btn-alugar')) {
+                var d = dadosDoCard(card);
+                d.alugado = !d.alugado;
+                api('PUT', '/api/filmes/' + id, d).then(function (f) {
+                    montarCard(f, card); atualizar();
+                }).catch(function (err) { aviso(err.message, 'erro'); });
+            }
+
+            if (e.target.classList.contains('btn-excluir')) {
+                if (!confirm('Excluir "' + card.dataset.titulo + '" do acervo?')) { return; }
+                api('DELETE', '/api/filmes/' + id).then(function () {
+                    card.remove(); aviso('Filme removido.', 'ok'); atualizar();
+                }).catch(function (err) { aviso(err.message, 'erro'); });
+            }
+        });
     }
-
-    // CREATE e UPDATE
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var dados = {
-            titulo: campos.titulo.value, diretor: campos.diretor.value, ano: campos.ano.value,
-            genero: campos.genero.value, sinopse: campos.sinopse.value
-        };
-        var id = campos.id.value;
-        var atual = id ? lista.querySelector('.filme[data-id="' + id + '"]') : null;
-        if (atual) { dados.alugado = atual.dataset.alugado === 'true'; }
-        var req = id ? api('PUT', '/locadora/' + id, dados) : api('POST', '/locadora', dados);
-        req.then(function (f) {
-            if (atual) { montarCard(f, atual); } else { lista.appendChild(montarCard(f)); }
-            aviso(id ? 'Filme atualizado!' : 'Filme adicionado ao acervo!', 'ok');
-            limparForm(); atualizar();
-        }).catch(function (err) { aviso(err.message, 'erro'); });
-    });
-
-    btnCancelar.addEventListener('click', function () { limparForm(); aviso(''); });
-
-    // Alugar/Devolver, Editar e Excluir (delegação de eventos)
-    lista.addEventListener('click', function (e) {
-        var card = e.target.closest('.filme'); if (!card) { return; }
-        var id = card.dataset.id;
-
-        if (e.target.classList.contains('btn-alugar')) {
-            var d = dadosDoCard(card);
-            d.alugado = !d.alugado;
-            api('PUT', '/locadora/' + id, d).then(function (f) {
-                montarCard(f, card); atualizar();
-            }).catch(function (err) { aviso(err.message, 'erro'); });
-        }
-
-        if (e.target.classList.contains('btn-editar')) {
-            var c = dadosDoCard(card);
-            campos.id.value = id; campos.titulo.value = c.titulo; campos.diretor.value = c.diretor;
-            campos.ano.value = c.ano; campos.genero.value = c.genero; campos.sinopse.value = c.sinopse;
-            tituloForm.textContent = 'Editando: ' + c.titulo;
-            btnSalvar.textContent = 'Salvar alterações';
-            btnCancelar.hidden = false;
-            form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            campos.titulo.focus();
-        }
-
-        if (e.target.classList.contains('btn-excluir')) {
-            if (!confirm('Excluir "' + card.dataset.titulo + '" do acervo?')) { return; }
-            api('DELETE', '/locadora/' + id).then(function () {
-                card.remove(); aviso('Filme removido.', 'ok'); atualizar();
-            }).catch(function (err) { aviso(err.message, 'erro'); });
-        }
-    });
 
     // Tema claro/escuro (apenas preferência visual no localStorage)
     function aplicarTema(escuro) {
