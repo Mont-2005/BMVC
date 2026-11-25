@@ -10,7 +10,9 @@ class Application():
             'pagina': self.pagina,
             'portal': self.portal,
             'banco': self.banco,
-            'locadora': self.locadora
+            'locadora': self.locadora,
+            'entrar': self.entrar,
+            'gestao': self.gestao
         }
 
         self.models= DataRecord()
@@ -35,7 +37,8 @@ class Application():
     def locadora(self):
         # Página pública da locadora: lista vinda do model (FilmeLocadora)
         return template('app/views/html/locadora',
-                        filmes=self.models.get_locadora())
+                        filmes=self.models.get_locadora(),
+                        usuario=self.usuario_atual())
 
 
     def helper(self):
@@ -117,3 +120,48 @@ class Application():
 
     def delete_filme_locadora(self, filme_id):
         return self.models.delete_filme_locadora(filme_id)
+
+
+    # ------------------------------------------------------------------
+    # Controle de acesso da locadora (login, sessão e papéis)
+
+    COOKIE_SESSAO = 'locadora_sessao'
+
+    def get_sessao_locadora(self):
+        return request.get_cookie(self.COOKIE_SESSAO)
+
+
+    def usuario_atual(self):
+        """Funcionario logado nesta requisição, ou None."""
+        return self.models.get_funcionario_by_session(self.get_sessao_locadora())
+
+
+    def login_funcionario(self, username, senha):
+        return self.models.check_funcionario(username, senha)
+
+
+    def logout_funcionario(self):
+        self.models.logout_funcionario(self.get_sessao_locadora())
+
+
+    def entrar(self):
+        if self.usuario_atual():
+            return redirect('/gestao')
+        return template('app/views/html/entrar',
+                        erro=request.query.get('erro'),
+                        aviso=request.query.get('aviso'))
+
+
+    def gestao(self):
+        """Página de acesso restrito: exige login."""
+        usuario = self.usuario_atual()
+        if not usuario:
+            return redirect('/entrar?aviso=1')
+        return template('app/views/html/gestao',
+                        filmes=self.models.get_locadora(),
+                        usuario=usuario,
+                        pode_gerenciar=(usuario.papel == 'gerente'))
+
+
+    def alugar_filme_locadora(self, filme_id, alugado):
+        return self.models.set_alugado_locadora(filme_id, alugado)
