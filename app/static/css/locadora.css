@@ -158,3 +158,28 @@ code {
 .botoes button { margin-top: 8px; border: 1px solid var(--borda); }
 .botoes .btn-alugar { border-color: var(--destaque); }
 .botoes .btn-excluir { color: #d93025; border-color: #d93025; background: transparent; }
+
+/* ---- Nível III: login, papéis e área restrita ---- */
+.topo-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.usuario { font-weight: 600; }
+.selo {
+    display: inline-block; margin-left: 4px; padding: 1px 8px; border-radius: 999px;
+    background: var(--destaque-texto); color: var(--destaque); font-size: .75rem; text-transform: uppercase;
+}
+.btn-link {
+    display: inline-block; padding: 8px 14px; border-radius: 6px;
+    background: var(--cartao); color: var(--texto); text-decoration: none;
+}
+.form-sair { margin: 0; }
+.aviso-papel p { margin: 0; }
+.login-card { max-width: 420px; margin: 24px auto; }
+.form-login { display: grid; gap: 14px; }
+.form-login label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: .9rem; }
+.form-login input[type=text], .form-login input[type=password] {
+    font: inherit; padding: 10px 12px; border: 1px solid var(--borda);
+    border-radius: 6px; background: var(--fundo); color: var(--texto);
+}
+.form-login .mostrar-senha { flex-direction: row; align-items: center; gap: 6px; font-weight: 400; }
+.msg { padding: 8px 12px; border-radius: 6px; margin: 0 0 12px; font-weight: 600; }
+.msg.erro { background: #fde8e6; color: #b3261e; }
+.msg.aviso { background: #fff4d6; color: #7a5b00; }
