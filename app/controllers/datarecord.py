@@ -1,6 +1,9 @@
 from app.models.user_account import UserAccount
 from app.models.filme import Filme
 from app.models.filme_locadora import FilmeLocadora
+from app.models.funcionario import Funcionario
+import hashlib
+import hmac
 import json
 import uuid
 
@@ -11,6 +14,7 @@ class DataRecord():
     USERS_FILE = "app/controllers/db/user_accounts.json"
     FILMES_FILE = "app/controllers/db/filmes.json"
     LOCADORA_FILE = "app/controllers/db/locadora.json"
+    FUNCIONARIOS_FILE = "app/controllers/db/funcionarios.json"
 
 
     def __init__(self):
@@ -21,6 +25,9 @@ class DataRecord():
         self.read_filmes()
         self.locadora = []     # banco (json)
         self.read_locadora()
+        self.funcionarios = [] # banco (json)
+        self.__sessoes = {}    # session_id -> Funcionario (memória)
+        self.read_funcionarios()
 
 
     # ------------------------------------------------------------------
@@ -229,3 +236,53 @@ class DataRecord():
         self.locadora.remove(filme)
         self.__save_locadora()
         return True
+
+
+    def set_alugado_locadora(self, filme_id, alugado):
+        """Só muda o status de aluguel (usado pelo atendente)."""
+        filme = self.get_filme_locadora(filme_id)
+        if filme is None:
+            return None
+        filme.alugado = bool(alugado)
+        self.__save_locadora()
+        return filme
+
+
+    # ------------------------------------------------------------------
+    # Funcionários: login, sessão e papéis (controle de acesso)
+
+    def read_funcionarios(self):
+        try:
+            with open(self.FUNCIONARIOS_FILE, "r") as arquivo_json:
+                self.funcionarios = [Funcionario(**d) for d in json.load(arquivo_json)]
+        except FileNotFoundError:
+            self.funcionarios = []
+
+
+    @staticmethod
+    def hash_senha(senha, salt_hex):
+        return hashlib.pbkdf2_hmac('sha256', senha.encode(),
+                                   bytes.fromhex(salt_hex), 120000).hex()
+
+
+    def check_funcionario(self, username, senha):
+        """Retorna um session_id novo se usuário e senha conferem."""
+        username = (username or "").strip()
+        senha = senha or ""
+        func = next((f for f in self.funcionarios if f.username == username), None)
+        # Mesmo sem o usuário, calcula um hash (tempo parecido nos dois casos)
+        salt = func.salt if func else "00" * 16
+        calculado = self.hash_senha(senha, salt)
+        if func and hmac.compare_digest(calculado, func.senha_hash):
+            session_id = str(uuid.uuid4())
+            self.__sessoes[session_id] = func
+            return session_id
+        return None
+
+
+    def get_funcionario_by_session(self, session_id):
+        return self.__sessoes.get(session_id)
+
+
+    def logout_funcionario(self, session_id):
+        self.__sessoes.pop(session_id, None)
