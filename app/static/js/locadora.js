@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var busca = byId('busca'), genero = byId('filtro-genero'), seculo = byId('filtro-seculo');
     var ordem = byId('ordem'), soAlugados = byId('so-alugados');
     var contador = byId('contador'), vazio = byId('vazio'), btnTema = byId('btn-tema');
+    var limparForm = null, campos = null;     // preenchidos para o gerente
 
     function aviso(texto, tipo) {
         if (!msg) { return; }
@@ -52,17 +53,27 @@ document.addEventListener('DOMContentLoaded', function () {
         card.dataset.ano = f.ano; card.dataset.genero = f.genero; card.dataset.sinopse = f.sinopse || '';
         card.dataset.alugado = f.alugado ? 'true' : 'false';
         card.innerHTML = '<span class="etiqueta"></span><h2></h2><p class="diretor"></p><p class="sinopse"></p>' +
-            '<p class="status"></p><div class="botoes">' +
-            '<button class="btn-alugar" type="button"></button>' +
-            (gerente ? '<button class="btn-editar" type="button">Editar</button>' +
-                       '<button class="btn-excluir" type="button">Excluir</button>' : '') +
-            '</div>';
+            '<p class="status"></p>' +
+            (modo === 'gestao' ? '<div class="botoes">' +
+                '<button class="btn-alugar" type="button"></button>' +
+                (gerente ? '<button class="btn-editar" type="button">Editar</button>' +
+                           '<button class="btn-excluir" type="button">Excluir</button>' : '') +
+                '</div>' : '');
         card.querySelector('.etiqueta').textContent = f.genero;
         card.querySelector('h2').textContent = f.titulo;
         card.querySelector('.diretor').textContent = 'Direção: ' + f.diretor + ' \u2022 ' + f.ano;
         card.querySelector('.sinopse').textContent = f.sinopse || '';
         card.querySelector('.status').textContent = f.alugado ? 'Alugado' : 'Disponível';
-        card.querySelector('.btn-alugar').textContent = f.alugado ? 'Devolver' : 'Alugar';
+        var btn = card.querySelector('.btn-alugar');
+        if (btn) { btn.textContent = f.alugado ? 'Devolver' : 'Alugar'; }
+        return card;
+    }
+
+    // Cria o card se não existir ou atualiza o existente (usado pelo CRUD e pelo WebSocket)
+    function upsertCard(f) {
+        var atual = lista.querySelector('.filme[data-id="' + f.id + '"]');
+        var card = montarCard(f, atual);
+        if (!atual) { lista.appendChild(card); }
         return card;
     }
 
@@ -98,13 +109,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // ---------- CRUD (somente na área restrita) ----------
     if (modo === 'gestao') {
         if (form) {   // formulário existe só para o gerente
-            var campos = {
+            campos = {
                 id: byId('filme-id'), titulo: byId('f-titulo'), diretor: byId('f-diretor'),
                 ano: byId('f-ano'), genero: byId('f-genero'), sinopse: byId('f-sinopse')
             };
             var btnSalvar = byId('btn-salvar'), btnCancelar = byId('btn-cancelar'), tituloForm = byId('titulo-form');
 
-            var limparForm = function () {
+            limparForm = function () {
                 form.reset(); campos.id.value = '';
                 tituloForm.textContent = 'Cadastrar filme';
                 btnSalvar.textContent = 'Adicionar filme';
@@ -123,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (atual) { dados.alugado = atual.dataset.alugado === 'true'; }
                 var req = id ? api('PUT', '/api/filmes/' + id, dados) : api('POST', '/api/filmes', dados);
                 req.then(function (f) {
-                    if (atual) { montarCard(f, atual); } else { lista.appendChild(montarCard(f)); }
+                    upsertCard(f);
                     aviso(id ? 'Filme atualizado!' : 'Filme adicionado ao acervo!', 'ok');
                     limparForm(); atualizar();
                 }).catch(function (err) { aviso(err.message, 'erro'); });
@@ -155,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 var d = dadosDoCard(card);
                 d.alugado = !d.alugado;
                 api('PUT', '/api/filmes/' + id, d).then(function (f) {
-                    montarCard(f, card); atualizar();
+                    upsertCard(f); atualizar();
                 }).catch(function (err) { aviso(err.message, 'erro'); });
             }
 
@@ -167,6 +178,91 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    // ---------- Tempo real (WebSocket) ----------
+    var statusWs = byId('status-ws'), presenca = byId('presenca'), toasts = byId('toasts');
+    var feed = byId('atividades'), semAtividade = byId('sem-atividade');
+    var porta = document.body.dataset.wsPorta;
+    var tentativas = 0;
+
+    function toast(texto) {
+        if (!toasts) { return; }
+        var t = document.createElement('div');
+        t.className = 'toast'; t.textContent = texto;
+        toasts.appendChild(t);
+        setTimeout(function () { t.classList.add('sai'); }, 3500);
+        setTimeout(function () { t.remove(); }, 4200);
+    }
+
+    function piscar(card) {
+        card.classList.remove('piscar'); void card.offsetWidth; card.classList.add('piscar');
+    }
+
+    function marcarStatus(on, texto) {
+        if (!statusWs) { return; }
+        statusWs.className = 'status-ws ' + (on ? 'on' : 'off');
+        statusWs.textContent = '\u25CF ' + texto;
+    }
+
+    function adicionarAtividade(item) {
+        if (!feed) { return; }
+        var li = document.createElement('li');
+        var hora = document.createElement('time'); hora.textContent = item.hora;
+        var txt = document.createElement('span'); txt.textContent = ' ' + item.texto;
+        li.appendChild(hora); li.appendChild(txt);
+        feed.insertBefore(li, feed.firstChild);
+        while (feed.children.length > 15) { feed.removeChild(feed.lastChild); }
+        if (semAtividade) { semAtividade.hidden = true; }
+    }
+
+    function tratarEvento(ev) {
+        if (ev.tipo === 'presenca') {
+            if (presenca) {
+                presenca.textContent = ev.total + (ev.total === 1 ? ' pessoa online' : ' pessoas online') +
+                    (modo === 'gestao' ? ' \u2022 ' + ev.funcionarios + ' funcionário(s)' : '');
+            }
+        } else if (ev.tipo === 'filme_criado' || ev.tipo === 'filme_atualizado') {
+            var f = ev.filme;
+            var existia = !!lista.querySelector('.filme[data-id="' + f.id + '"]');
+            var antes = existia ? lista.querySelector('.filme[data-id="' + f.id + '"]').dataset.alugado : null;
+            var card = upsertCard(f);
+            // se o gerente está editando justo este filme, o formulário continua como está
+            atualizar(); piscar(card);
+            if (!existia) { toast('Novo filme no acervo: ' + f.titulo); }
+            else if (antes !== String(f.alugado)) { toast('"' + f.titulo + '" agora está ' + (f.alugado ? 'alugado' : 'disponível')); }
+            else { toast('"' + f.titulo + '" foi atualizado'); }
+        } else if (ev.tipo === 'filme_removido') {
+            var c = lista.querySelector('.filme[data-id="' + ev.id + '"]');
+            if (c) { c.remove(); atualizar(); toast('"' + ev.titulo + '" saiu do acervo'); }
+            if (campos && campos.id.value === String(ev.id)) {
+                limparForm(); aviso('O filme que você editava foi excluído por outra pessoa.', 'erro');
+            }
+        } else if (ev.tipo === 'atividade') {
+            adicionarAtividade(ev);
+        }
+    }
+
+    function conectar() {
+        var proto = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        var ws;
+        try { ws = new WebSocket(proto + window.location.hostname + ':' + porta + '/ws'); }
+        catch (e) { marcarStatus(false, 'sem tempo real'); return; }
+
+        ws.onopen = function () {
+            tentativas = 0; marcarStatus(true, 'ao vivo');
+            ws._ping = setInterval(function () { if (ws.readyState === 1) { ws.send('ping'); } }, 25000);
+        };
+        ws.onmessage = function (m) {
+            try { tratarEvento(JSON.parse(m.data)); } catch (e) {}
+        };
+        ws.onclose = function () {
+            clearInterval(ws._ping);
+            tentativas++;
+            marcarStatus(false, 'reconectando...');
+            setTimeout(conectar, Math.min(1000 * tentativas, 8000));
+        };
+    }
+    if (porta) { conectar(); }
 
     // Tema claro/escuro (apenas preferência visual no localStorage)
     function aplicarTema(escuro) {
