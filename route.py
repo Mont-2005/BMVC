@@ -230,4 +230,5 @@ def action_filmes_delete(filme_id):
 
 if __name__ == '__main__':
 
+    ctl.iniciar_tempo_real()      # WebSocket em outra porta (thread própria)
     run(app, host='0.0.0.0', port=8080, debug=True)
