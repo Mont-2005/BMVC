@@ -7,7 +7,7 @@
     <link rel="stylesheet" type="text/css" href="/static/css/locadora.css">
     <script src="/static/js/locadora.js" defer></script>
 </head>
-<body data-modo="gestao" data-gerente="{{ 'true' if pode_gerenciar else 'false' }}">
+<body data-modo="gestao" data-gerente="{{ 'true' if pode_gerenciar else 'false' }}" data-ws-porta="{{ ws_porta }}">
 
     <header class="topo">
         <div>
@@ -18,6 +18,8 @@
             <span class="usuario">{{ usuario.nome }} <small class="selo">{{ usuario.papel }}</small></span>
             <a class="btn-link" href="/locadora">Ver catálogo</a>
             <form action="/sair" method="post" class="form-sair"><button type="submit">Sair</button></form>
+            <span id="status-ws" class="status-ws off" title="Conexão em tempo real">&#9679; conectando...</span>
+            <span id="presenca" class="presenca"></span>
             <button id="btn-tema" type="button" aria-label="Alternar tema claro/escuro">Modo claro</button>
         </div>
     </header>
@@ -52,6 +54,12 @@
         </section>
         % end
         <p id="mensagem" role="status" aria-live="polite"></p>
+
+        <section class="bmvc atividades-box" aria-label="Atividade em tempo real">
+            <h2>Atividade em tempo real</h2>
+            <ul id="atividades" class="atividades"></ul>
+            <p id="sem-atividade" class="vazio-feed">Nenhuma ação registrada ainda. Quando alguém alugar, cadastrar ou excluir um filme, aparece aqui na hora.</p>
+        </section>
 
         <section class="painel" aria-label="Filtros">
             <input id="busca" type="search" placeholder="Buscar por título ou diretor...">
@@ -100,8 +108,10 @@
         <p id="vazio" class="vazio" hidden>Nenhum filme encontrado com esses filtros.</p>
     </main>
 
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
     <footer class="rodape">
-        <p>Projeto BMVC &ndash; Nível III &bull; Área restrita</p>
+        <p>Projeto BMVC &ndash; Nível IV &bull; Área restrita</p>
     </footer>
 
 </body>
