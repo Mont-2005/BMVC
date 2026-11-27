@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal</title>
+    <title>Minha segunda página com o BMVC</title>
 </head>
 <body>
-    <h1>Login</h1>
-    <form action="/portal" method="post">
-        <label for="username">Nome:</label>
-        <input id="username" name="username" type="text" required /><br>
 
-        <label for="password">Senha:</label>
-        <input id="password" name="password" type="password" required /><br>
+    <h1>Minha página com interação de modelos :)</h1>
 
-        <input value="Login" type="submit" />
-    </form>
-    <form action="/logout" method="post">
-        <button type="submit">Logout</button>
-    </form>
+    % if data:
+        <div>
+            <h2>Dados do Usuário:</h2>
+            <p>Username: {{ data.username }} </p>
+            <p>Password: {{ data.password }} </p>
+        </div>
+    % else:
+        <h2>Porém, desta vez não foram transferidas quaisquer informações ): </h2>
+    % end
+
 </body>
 </html>
