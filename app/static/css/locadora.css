@@ -183,3 +183,26 @@ code {
 .msg { padding: 8px 12px; border-radius: 6px; margin: 0 0 12px; font-weight: 600; }
 .msg.erro { background: #fde8e6; color: #b3261e; }
 .msg.aviso { background: #fff4d6; color: #7a5b00; }
+
+/* ---- Nível IV: tempo real (WebSocket) ---- */
+.status-ws { font-size: .85rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--cartao); color: var(--texto); }
+.status-ws.on { color: #2e9e4f; }
+.status-ws.off { color: #d93025; }
+.presenca { font-size: .85rem; opacity: .95; }
+.filme.piscar { animation: piscar 1.6s ease-out; }
+@keyframes piscar {
+    0%   { box-shadow: 0 0 0 4px var(--destaque); transform: scale(1.02); }
+    100% { box-shadow: var(--sombra); transform: scale(1); }
+}
+.toasts { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: 50; max-width: 320px; }
+.toast {
+    background: var(--destaque); color: var(--destaque-texto); padding: 10px 14px; border-radius: 8px;
+    box-shadow: var(--sombra); font-weight: 600; transition: opacity .6s, transform .6s;
+}
+.toast.sai { opacity: 0; transform: translateY(8px); }
+.atividades-box { margin-bottom: 16px; }
+.atividades { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 180px; overflow-y: auto; }
+.atividades li { padding: 6px 10px; border-left: 3px solid var(--destaque); background: var(--fundo); border-radius: 4px; }
+.atividades time { font-weight: 700; color: var(--destaque); font-variant-numeric: tabular-nums; }
+.vazio-feed { margin: 0; color: var(--texto-suave); }
+@media (prefers-reduced-motion: reduce) { .filme.piscar { animation: none; } }
