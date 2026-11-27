@@ -1,5 +1,6 @@
 from bottle import template, redirect, request
 from app.controllers.datarecord import DataRecord
+from app.controllers.realtime import ServidorTempoReal
 
 
 
@@ -16,6 +17,9 @@ class Application():
         }
 
         self.models= DataRecord()
+        self.realtime = ServidorTempoReal(self.WS_PORTA,
+                                          self.models.get_funcionario_by_session,
+                                          self.COOKIE_SESSAO)
 
 
     def render(self, page, parameter=None):
@@ -38,7 +42,8 @@ class Application():
         # Página pública da locadora: lista vinda do model (FilmeLocadora)
         return template('app/views/html/locadora',
                         filmes=self.models.get_locadora(),
-                        usuario=self.usuario_atual())
+                        usuario=self.usuario_atual(),
+                        ws_porta=self.WS_PORTA)
 
 
     def helper(self):
@@ -108,24 +113,82 @@ class Application():
     # Recurso "locadora" (CRUD completo no navegador)
 
     def create_filme_locadora(self, titulo, diretor, ano, genero, sinopse):
-        return self.models.create_filme_locadora(titulo, diretor, ano,
-                                                 genero, sinopse)
+        filme = self.models.create_filme_locadora(titulo, diretor, ano,
+                                                  genero, sinopse)
+        self._publicar('filme_criado', filme,
+                       f"cadastrou o filme \"{filme.titulo}\"")
+        return filme
 
 
     def update_filme_locadora(self, filme_id, titulo, diretor, ano, genero,
                               sinopse, alugado=None):
-        return self.models.update_filme_locadora(filme_id, titulo, diretor,
-                                                 ano, genero, sinopse, alugado)
+        antes = self.models.get_filme_locadora(filme_id)
+        alugado_antes = antes.alugado if antes else None
+        filme = self.models.update_filme_locadora(filme_id, titulo, diretor,
+                                                  ano, genero, sinopse, alugado)
+        if filme:
+            self._publicar_atualizacao(filme, alugado_antes)
+        return filme
+
+
+    def alugar_filme_locadora(self, filme_id, alugado):
+        antes = self.models.get_filme_locadora(filme_id)
+        alugado_antes = antes.alugado if antes else None
+        filme = self.models.set_alugado_locadora(filme_id, alugado)
+        if filme:
+            self._publicar_atualizacao(filme, alugado_antes)
+        return filme
 
 
     def delete_filme_locadora(self, filme_id):
-        return self.models.delete_filme_locadora(filme_id)
+        filme = self.models.get_filme_locadora(filme_id)
+        titulo = filme.titulo if filme else None
+        if not self.models.delete_filme_locadora(filme_id):
+            return False
+        self.realtime.publicar({'tipo': 'filme_removido', 'id': filme_id,
+                                'titulo': titulo})
+        self._atividade(f"excluiu o filme \"{titulo}\"")
+        return True
+
+
+    # ------------------------------------------------------------------
+    # Tempo real (WebSocket)
+
+    def iniciar_tempo_real(self):
+        if self.realtime.iniciar():
+            print(f"[tempo real] WebSocket em ws://localhost:{self.WS_PORTA}/ws")
+        else:
+            print(f"[tempo real] DESLIGADO: não foi possível abrir a porta "
+                  f"{self.WS_PORTA} ({self.realtime.erro}). O site funciona, "
+                  f"mas sem atualização ao vivo.")
+
+
+    def _atividade(self, texto):
+        """Registra 'quem fez o quê' (só quem está logado vê)."""
+        usuario = self.usuario_atual()
+        quem = f"{usuario.nome} ({usuario.papel})" if usuario else "Alguém"
+        self.realtime.registrar_atividade(f"{quem} {texto}")
+
+
+    def _publicar(self, tipo, filme, texto_atividade):
+        self.realtime.publicar({'tipo': tipo, 'filme': vars(filme)})
+        self._atividade(texto_atividade)
+
+
+    def _publicar_atualizacao(self, filme, alugado_antes):
+        if alugado_antes is not None and filme.alugado != alugado_antes:
+            texto = ("alugou" if filme.alugado else "registrou a devolução de") \
+                    + f" \"{filme.titulo}\""
+        else:
+            texto = f"editou o filme \"{filme.titulo}\""
+        self._publicar('filme_atualizado', filme, texto)
 
 
     # ------------------------------------------------------------------
     # Controle de acesso da locadora (login, sessão e papéis)
 
     COOKIE_SESSAO = 'locadora_sessao'
+    WS_PORTA = 8765
 
     def get_sessao_locadora(self):
         return request.get_cookie(self.COOKIE_SESSAO)
@@ -160,8 +223,5 @@ class Application():
         return template('app/views/html/gestao',
                         filmes=self.models.get_locadora(),
                         usuario=usuario,
-                        pode_gerenciar=(usuario.papel == 'gerente'))
-
-
-    def alugar_filme_locadora(self, filme_id, alugado):
-        return self.models.set_alugado_locadora(filme_id, alugado)
+                        pode_gerenciar=(usuario.papel == 'gerente'),
+                        ws_porta=self.WS_PORTA)
