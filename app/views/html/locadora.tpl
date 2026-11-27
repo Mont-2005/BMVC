@@ -7,7 +7,7 @@
     <link rel="stylesheet" type="text/css" href="/static/css/locadora.css">
     <script src="/static/js/locadora.js" defer></script>
 </head>
-<body data-modo="catalogo" data-gerente="false">
+<body data-modo="catalogo" data-gerente="false" data-ws-porta="{{ ws_porta }}">
 
     <header class="topo">
         <div>
@@ -22,6 +22,8 @@
             % else:
                 <a class="btn-link" href="/entrar">Entrar (funcionários)</a>
             % end
+            <span id="status-ws" class="status-ws off" title="Conexão em tempo real">&#9679; conectando...</span>
+            <span id="presenca" class="presenca"></span>
             <button id="btn-tema" type="button" aria-label="Alternar tema claro/escuro">Modo claro</button>
         </div>
     </header>
@@ -67,8 +69,10 @@
         <p id="vazio" class="vazio" hidden>Nenhum filme encontrado com esses filtros.</p>
     </main>
 
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
     <footer class="rodape">
-        <p>Projeto BMVC &ndash; Nível III &bull; Catálogo público (somente leitura)</p>
+        <p>Projeto BMVC &ndash; Nível IV &bull; Catálogo público, atualizado em tempo real</p>
     </footer>
 
 </body>
